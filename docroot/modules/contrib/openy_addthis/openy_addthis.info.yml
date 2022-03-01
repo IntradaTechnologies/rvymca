@@ -1,0 +1,11 @@
+name: Open Y AddThis
+type: module
+description: Provides a configurable block with social icons and links to share content using AddThis service.
+core_version_requirement: ^8 || ^9
+package: Open Y
+# version: 8.x-1.0
+
+# Information added by Drupal.org packaging script on 2021-09-24
+version: '1.0.2'
+project: 'openy_addthis'
+datestamp: 1632487051

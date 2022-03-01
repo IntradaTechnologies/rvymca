@@ -1,0 +1,18 @@
+name: 'OpenY Paragraph Activity Finder'
+description: 'Feature with Activity Finder paragraph [deprecated].'
+type: module
+core_version_requirement: ^8 || ^9
+dependencies:
+  - drupal:field
+  - drupal:node
+  - openy_node_landing:openy_node_landing
+  - openy_prgf:openy_prgf
+  - openy_repeat:openy_repeat
+  - paragraphs:paragraphs
+  - plugin:plugin
+# version: 4.0.1
+
+# Information added by Drupal.org packaging script on 2021-09-20
+version: '4.0.2'
+project: 'openy_activity_finder'
+datestamp: 1632143204

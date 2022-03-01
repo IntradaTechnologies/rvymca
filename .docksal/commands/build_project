@@ -1,0 +1,119 @@
+#!/usr/bin/env bash
+
+## Build Open Y project.
+##
+## See https://github.com/ymcatwincities/openy-project
+## Note: This command will remove all files in project, use with caution!
+##
+## Usage: fin build_project
+
+# Abort if anything fails
+set -e
+
+CURRENT_DIR="$(dirname "$0")"
+source "${CURRENT_DIR}/includes/helpers.sh"
+
+#-------------------------- Settings --------------------------------
+
+PROJECT_NAME="openy_project"
+IGNORE_REQUIRED="^.$ ^..$ .docksal"
+COMPOSER_PROJECT="${PROJECT_ROOT}/${PROJECT_NAME}"
+DOCROOT_PATH="${PROJECT_ROOT}/${DOCROOT:-docroot}"
+OPENY_PATH="${DOCROOT:-docroot}/profiles/contrib/openy"
+
+#-------------------------- END: Settings --------------------------------
+
+#-------------------------- Functions --------------------------------
+
+# Cleanup project.
+cleanup ()
+{
+  cd "$PROJECT_ROOT"
+
+  # Build command based on settings.
+  IGNORE="$IGNORE_REQUIRED $IGNORE_CUSTOM"
+  CMD='ls -a | grep -v'
+  arr=(`echo ${IGNORE}`);
+
+  echo "Ignore ${#arr[*]} directories during cleanup:"
+  for ix in ${!arr[*]}
+  do
+    CMD="$CMD -e '${arr[$ix]}'"
+    printf "   %s\n" "- ${arr[$ix]}"
+  done
+
+  # Here we will get something like this:
+  # ls -a | grep -v -e ".docksal" -e ".idea" -e "^.$" -e "^..$" | xargs rm -rf
+  RM_CMD="$CMD | xargs rm -rf"
+  if [[ -d "$DOCROOT_PATH" ]]; then
+    fin exec "chmod 777 -R $DOCROOT"
+  fi
+  # Execute command.
+  fin exec "$RM_CMD"
+}
+
+# Checkout composer project.
+checkout_composer_project ()
+{
+  cd "$PROJECT_ROOT"
+  fin exec "git clone git@github.com:ymcatwincities/openy-project.git $PROJECT_NAME"
+  cd "$COMPOSER_PROJECT"
+  fin exec git checkout $OPENY_PROJECT_VERSION
+  rm -rf ".git"
+}
+
+# Init GIT repository in project.
+init_git_repo ()
+{
+  cd "$COMPOSER_PROJECT"
+  mkdir -p "$OPENY_PATH" && cd "$OPENY_PATH"
+  fin exec "git clone $GIT_REMOTE_ORIGIN ."
+  if [ -n "$GIT_REMOTE_UPSTREAM" ]; then
+    fin exec "git remote add upstream $GIT_REMOTE_UPSTREAM"
+  fi
+  fin exec "git checkout $OPENY_VERSION"
+}
+
+# Install composer project.
+install_project ()
+{
+  cd "$COMPOSER_PROJECT"
+  fin exec "composer config repositories.openy_dev path $OPENY_PATH"
+  fin composer update
+
+  # Remove downloaded docksal directory.
+  rm -rf ".docksal"
+
+  # Move all files from COMPOSER_PROJECT to root directory.
+  mv * .[^.]* ..
+  # Remove empty directory.
+  rm -rf "$COMPOSER_PROJECT"
+}
+
+#-------------------------- END: Functions ---------------------------
+
+#-------------------------- Execution --------------------------------
+if [[ ${DOCKER_RUNNING} == "true" ]]; then
+  echo-green-bg " Step 1: Recreating services. "
+  fin reset -f
+else
+  echo-green-bg " Step 1: Creating services. "
+  fin up
+fi
+
+echo-green-bg " Step 2: Cleanup."
+time cleanup
+
+echo-green-bg " Step 3: Checkout composer project."
+time checkout_composer_project
+
+echo-green-bg " Step 4: Init git repo and add upstream remote."
+time init_git_repo
+
+echo-green-bg " Step 5: Install project using composer and attach openy."
+time install_project
+
+echo -en "${green_bg} DONE! ${NC} "
+echo "Run 'fin init' to install Open Y."
+
+#-------------------------- END: Execution ----------------------------------
